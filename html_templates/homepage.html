@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal News Feed</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+    <!-- Custom Styles -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #262626;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #404040;
+        }
+        
+        /* Loading animation */
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Fade in animation for cards */
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Modal backdrop */
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+        }
+        
+        /* Custom dropdown styles */
+        .dropdown-option:hover {
+            background-color: #262626;
+        }
+    </style>
+</head>
+
+<body class="bg-black text-white antialiased">
+
+    <!-- Page Container -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+        <!-- Header -->
+        <header class="py-6">
+            <nav class="flex start items-center border-b border-neutral-800 pb-4">
+                <div class="flex items-center gap-6 text-sm font-medium">
+                    <a href="#" id="news-tab" class="flex items-center gap-2 text-white transition-colors border-b-2 border-white pb-1">
+                        <i data-lucide="newspaper" class="w-4 h-4"></i>
+                        <span>News Feed</span>
+                    </a>
+                    <a href="#" id="saved-tab" class="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors border-b-2 border-transparent pb-1">
+                        <i data-lucide="bookmark" class="w-4 h-4"></i>
+                        <span>Saved PDFs</span>
+                    </a>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="py-10">
+            <!-- News Feed Section -->
+            <div id="news-section">
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-2xl font-bold">Latest News</h2>
+                    <button id="refresh-btn" class="flex items-center gap-2 px-4 py-2 border border-neutral-700 rounded-lg hover:border-neutral-600 transition-colors">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        <span>Refresh</span>
+                    </button>
+                </div>
+                
+                <!-- Loading State -->
+                <div id="loading" class="flex items-center justify-center py-20">
+                    <div class="loading-spinner w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full"></div>
+                    <span class="ml-3 text-neutral-400">Loading news...</span>
+                </div>
+                
+                <!-- Error State -->
+                <div id="error" class="hidden text-center py-20">
+                    <i data-lucide="alert-circle" class="w-12 h-12 text-neutral-600 mx-auto mb-4"></i>
+                    <h3 class="text-lg font-medium text-white mb-2">Failed to load news</h3>
+                    <p class="text-neutral-400 mb-6">There was an error loading the latest news. Please try again.</p>
+                    <button id="retry-btn" class="px-6 py-2 bg-white text-black rounded-lg hover:bg-neutral-200 transition-colors font-medium">
+                        Try Again
+                    </button>
+                </div>
+                
+                <!-- News Grid -->
+                <div id="news-feed-container" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- News cards will be dynamically injected here -->
+                </div>
+            </div>
+
+            <!-- Saved PDFs Section -->
+            <div id="saved-section" class="hidden">
+                <div class="flex items-center justify-between mb-8">
+                    <h2 class="text-2xl font-bold">Saved PDFs</h2>
+                    <div class="flex items-center gap-3">
+                        <button id="create-pdf-btn" class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            <span>Create PDF</span>
+                        </button>
+                        <button id="refresh-pdfs-btn" class="flex items-center gap-2 px-4 py-2 border border-neutral-700 rounded-lg hover:border-neutral-600 transition-colors">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Loading State for PDFs -->
+                <div id="pdfs-loading" class="flex items-center justify-center py-20">
+                    <div class="loading-spinner w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full"></div>
+                    <span class="ml-3 text-neutral-400">Loading PDFs...</span>
+                </div>
+                
+                <!-- Error State for PDFs -->
+                <div id="pdfs-error" class="hidden text-center py-20">
+                    <i data-lucide="alert-circle" class="w-12 h-12 text-neutral-600 mx-auto mb-4"></i>
+                    <h3 class="text-lg font-medium text-white mb-2">Failed to load PDFs</h3>
+                    <p class="text-neutral-400 mb-6">There was an error loading your saved PDFs. Please try again.</p>
+                    <button id="retry-pdfs-btn" class="px-6 py-2 bg-white text-black rounded-lg hover:bg-neutral-200 transition-colors font-medium">
+                        Try Again
+                    </button>
+                </div>
+                
+                <!-- Empty State for PDFs -->
+                <div id="pdfs-empty" class="hidden text-center py-20">
+                    <i data-lucide="file-text" class="w-16 h-16 text-neutral-700 mx-auto mb-4"></i>
+                    <h3 class="text-xl font-medium text-white mb-2">No saved PDFs</h3>
+                    <p class="text-neutral-400">Your saved PDF documents will appear here.</p>
+                </div>
+                
+                <!-- PDFs Grid -->
+                <div id="pdfs-container" class="hidden grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    <!-- PDF cards will be dynamically injected here -->
+                </div>
+            </div>
+        </main>
+
+    </div>
+
+    <!-- Save to PDF Modal -->
+    <div id="save-modal" class="hidden fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
+        <div class="bg-neutral-900 border border-neutral-700 rounded-xl max-w-md w-full p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-white">Save Article to PDF</h3>
+                <button id="close-modal" class="text-neutral-400 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="mb-6">
+                <p class="text-sm text-neutral-400 mb-2">Article:</p>
+                <p id="modal-article-title" class="text-white font-medium"></p>
+            </div>
+            
+            <div class="mb-6">
+                <label for="pdf-select" class="block text-sm font-medium text-neutral-300 mb-2">
+                    Select PDF to save to:
+                </label>
+                <div class="relative">
+                    <select id="pdf-select" class="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-neutral-500 focus:border-transparent">
+                        <option value="">Loading PDFs...</option>
+                    </select>
+                    <div id="pdf-select-loading" class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div class="loading-spinner w-4 h-4 border border-neutral-600 border-t-white rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button id="save-article-btn" class="flex-1 bg-white text-black px-4 py-2 rounded-lg hover:bg-neutral-200 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="save-btn-text">Save Article</span>
+                    <div class="save-btn-loading hidden">
+                        <div class="loading-spinner w-4 h-4 border border-neutral-400 border-t-black rounded-full inline-block mr-2"></div>
+                        Saving...
+                    </div>
+                </button>
+                <button id="cancel-save" class="px-4 py-2 border border-neutral-600 text-neutral-300 rounded-lg hover:border-neutral-500 hover:text-white transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit PDF Modal -->
+    <div id="edit-modal" class="hidden fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
+        <div class="bg-neutral-900 border border-neutral-700 rounded-xl max-w-[42rem] w-full max-h-[90vh] p-6 flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-white">Edit PDF</h3>
+                <button id="close-edit-modal" class="text-neutral-400 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4">
+                <p class="text-sm text-neutral-400 mb-2">PDF Name:</p>
+                <p id="edit-modal-pdf-name" class="text-white font-medium"></p>
+            </div>
+            
+            <!-- PDF Content Display -->
+            <div class="flex-1 mb-6 border border-neutral-700 rounded-lg overflow-hidden">
+                <div id="pdf-content-loading" class="flex items-center justify-center py-20">
+                    <div class="loading-spinner w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full"></div>
+                    <span class="ml-3 text-neutral-400">Loading PDF content...</span>
+                </div>
+                
+                <div id="pdf-content-error" class="hidden text-center py-20">
+                    <i data-lucide="alert-circle" class="w-12 h-12 text-neutral-600 mx-auto mb-4"></i>
+                    <h3 class="text-lg font-medium text-white mb-2">Failed to load PDF</h3>
+                    <p class="text-neutral-400">There was an error loading the PDF content.</p>
+                </div>
+                
+                <div id="pdf-content-display" class="hidden bg-white text-black p-4 h-96 overflow-auto">
+                    <!-- PDF content will be displayed here -->
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-3 flex-wrap">
+                <button id="preview-pdf-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                    <i data-lucide="eye" class="w-4 h-4 inline mr-2"></i>
+                    Preview
+                </button>
+                <button id="update-pdf-btn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="update-btn-text">
+                        <i data-lucide="save" class="w-4 h-4 inline mr-2"></i>
+                        Update
+                    </span>
+                    <div class="update-btn-loading hidden">
+                        <div class="loading-spinner w-4 h-4 border border-neutral-400 border-t-white rounded-full inline-block mr-2"></div>
+                        Updating...
+                    </div>
+                </button>
+                <button id="delete-pdf-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="delete-btn-text">
+                        <i data-lucide="trash-2" class="w-4 h-4 inline mr-2"></i>
+                        Delete
+                    </span>
+                    <div class="delete-btn-loading hidden">
+                        <div class="loading-spinner w-4 h-4 border border-neutral-400 border-t-white rounded-full inline-block mr-2"></div>
+                        Deleting...
+                    </div>
+                </button>
+                <button id="cancel-edit" class="px-4 py-2 border border-neutral-600 text-neutral-300 rounded-lg hover:border-neutral-500 hover:text-white transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create PDF Modal -->
+    <div id="create-pdf-modal" class="hidden fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-4">
+        <div class="bg-neutral-900 border border-neutral-700 rounded-xl max-w-md w-full p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-white">Create New PDF</h3>
+                <button id="close-create-modal" class="text-neutral-400 hover:text-white transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="mb-6">
+                <label for="pdf-name-input" class="block text-sm font-medium text-neutral-300 mb-2">
+                    PDF Name:
+                </label>
+                <input type="text" id="pdf-name-input" placeholder="Enter PDF name..."
+                       class="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            
+            <div class="mb-6">
+                <label for="pdf-content-input" class="block text-sm font-medium text-neutral-300 mb-2">
+                    Initial Content (optional):
+                </label>
+                <textarea id="pdf-content-input" placeholder="Enter initial content..." rows="4"
+                         class="w-full bg-neutral-800 border border-neutral-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"></textarea>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <button id="create-pdf-submit-btn" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="create-btn-text">Create PDF</span>
+                    <div class="create-btn-loading hidden">
+                        <div class="loading-spinner w-4 h-4 border border-neutral-400 border-t-white rounded-full inline-block mr-2"></div>
+                        Creating...
+                    </div>
+                </button>
+                <button id="cancel-create" class="px-4 py-2 border border-neutral-600 text-neutral-300 rounded-lg hover:border-neutral-500 hover:text-white transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // DOM elements
+            const newsTab = document.getElementById('news-tab');
+            const savedTab = document.getElementById('saved-tab');
+            const newsSection = document.getElementById('news-section');
+            const savedSection = document.getElementById('saved-section');
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const newsFeedContainer = document.getElementById('news-feed-container');
+            const refreshBtn = document.getElementById('refresh-btn');
+            const retryBtn = document.getElementById('retry-btn');
+
+            // PDF section elements
+            const refreshPdfsBtn = document.getElementById('refresh-pdfs-btn');
+            const retryPdfsBtn = document.getElementById('retry-pdfs-btn');
+            const pdfsLoading = document.getElementById('pdfs-loading');
+            const pdfsError = document.getElementById('pdfs-error');
+            const pdfsEmpty = document.getElementById('pdfs-empty');
+            const pdfsContainer = document.getElementById('pdfs-container');
+
+            // Modal elements
+            const saveModal = document.getElementById('save-modal');
+            const closeModal = document.getElementById('close-modal');
+            const modalArticleTitle = document.getElementById('modal-article-title');
+            const pdfSelect = document.getElementById('pdf-select');
+            const pdfSelectLoading = document.getElementById('pdf-select-loading');
+            const saveArticleBtn = document.getElementById('save-article-btn');
+            const cancelSave = document.getElementById('cancel-save');
+            const saveBtnText = document.querySelector('.save-btn-text');
+            const saveBtnLoading = document.querySelector('.save-btn-loading');
+
+            // Edit modal elements
+            const editModal = document.getElementById('edit-modal');
+            const closeEditModal = document.getElementById('close-edit-modal');
+            const editModalPdfName = document.getElementById('edit-modal-pdf-name');
+            const pdfContentLoading = document.getElementById('pdf-content-loading');
+            const pdfContentError = document.getElementById('pdf-content-error');
+            const pdfContentDisplay = document.getElementById('pdf-content-display');
+            const previewPdfBtn = document.getElementById('preview-pdf-btn');
+            const updatePdfBtn = document.getElementById('update-pdf-btn');
+            const deletePdfBtn = document.getElementById('delete-pdf-btn');
+            const cancelEdit = document.getElementById('cancel-edit');
+            const updateBtnText = document.querySelector('.update-btn-text');
+            const updateBtnLoading = document.querySelector('.update-btn-loading');
+            const deleteBtnText = document.querySelector('.delete-btn-text');
+            const deleteBtnLoading = document.querySelector('.delete-btn-loading');
+
+            // Create PDF modal elements
+            const createPdfBtn = document.getElementById('create-pdf-btn');
+            const createPdfModal = document.getElementById('create-pdf-modal');
+            const closeCreateModal = document.getElementById('close-create-modal');
+            const pdfNameInput = document.getElementById('pdf-name-input');
+            const pdfContentInput = document.getElementById('pdf-content-input');
+            const createPdfSubmitBtn = document.getElementById('create-pdf-submit-btn');
+            const cancelCreate = document.getElementById('cancel-create');
+            const createBtnText = document.querySelector('.create-btn-text');
+            const createBtnLoading = document.querySelector('.create-btn-loading');
+
+            let currentTab = 'news';
+            let currentArticle = null;
+            let currentPdf = null;
+            let currentPdfContent = null;
+            let availablePdfs = [];
+
+            // Tab switching functionality
+            function switchTab(tab) {
+                currentTab = tab;
+                
+                // Update tab appearance
+                if (tab === 'news') {
+                    newsTab.classList.remove('text-neutral-400', 'border-transparent');
+                    newsTab.classList.add('text-white', 'border-white');
+                    savedTab.classList.remove('text-white', 'border-white');
+                    savedTab.classList.add('text-neutral-400', 'border-transparent');
+                    
+                    newsSection.classList.remove('hidden');
+                    savedSection.classList.add('hidden');
+                } else {
+                    savedTab.classList.remove('text-neutral-400', 'border-transparent');
+                    savedTab.classList.add('text-white', 'border-white');
+                    newsTab.classList.remove('text-white', 'border-white');
+                    newsTab.classList.add('text-neutral-400', 'border-transparent');
+                    
+                    newsSection.classList.add('hidden');
+                    savedSection.classList.remove('hidden');
+                    // Load PDFs when switching to saved tab
+                    loadPdfsForDisplay();
+                }
+            }
+
+            // Fetch PDFs from server
+            const getPdfs = async () => {
+                try {
+                    const response = await fetch('/get_pdfs');
+                    if (!response.ok) throw new Error('Failed to fetch PDFs');
+                    const data = await response.json();
+                    return data.pdfs || [];
+                } catch (err) {
+                    console.warn('Using mock PDF data:', err.message);
+                    // Fallback mock data
+                    return ['Research Papers', 'News Archive', 'Personal Collection', 'Tech Articles'];
+                }
+            };
+
+            // PDF display functions
+            const loadPdfsForDisplay = async () => {
+                showPdfsLoading();
+                try {
+                    const pdfs = await getPdfs();
+                    if (pdfs.length === 0) {
+                        showPdfsEmpty();
+                    } else {
+                        renderPdfs(pdfs);
+                        showPdfs();
+                    }
+                } catch (err) {
+                    console.error('Error loading PDFs:', err);
+                    showPdfsError();
+                }
+            };
+
+            // Create PDF card HTML
+            const createPdfCard = (pdfName) => {
+                return `
+                    <a href="/pdf_edit/${pdfName}" class="block group focus:outline-none focus:ring-2 focus:ring-neutral-600 rounded-xl fade-in">
+                        <div class="h-full border border-neutral-800 rounded-xl overflow-hidden bg-neutral-950 hover:border-neutral-700 transition-all duration-300">
+                            <div class="p-6">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 bg-neutral-800 rounded-lg flex items-center justify-center">
+                                            <i data-lucide="file-text" class="w-5 h-5 text-neutral-400"></i>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-white font-medium text-sm">${pdfName}</h3>
+                                            <p class="text-neutral-500 text-xs">PDF Document</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-neutral-500">
+                                    Click to view or manage this PDF
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            };
+
+            // PDF state management functions
+            function showPdfsLoading() {
+                pdfsLoading.classList.remove('hidden');
+                pdfsError.classList.add('hidden');
+                pdfsEmpty.classList.add('hidden');
+                pdfsContainer.classList.add('hidden');
+            }
+
+            function showPdfsError() {
+                pdfsLoading.classList.add('hidden');
+                pdfsError.classList.remove('hidden');
+                pdfsEmpty.classList.add('hidden');
+                pdfsContainer.classList.add('hidden');
+            }
+
+            function showPdfsEmpty() {
+                pdfsLoading.classList.add('hidden');
+                pdfsError.classList.add('hidden');
+                pdfsEmpty.classList.remove('hidden');
+                pdfsContainer.classList.add('hidden');
+            }
+
+            function showPdfs() {
+                pdfsLoading.classList.add('hidden');
+                pdfsError.classList.add('hidden');
+                pdfsEmpty.classList.add('hidden');
+                pdfsContainer.classList.remove('hidden');
+            }
+
+            // Render PDF cards
+            const renderPdfs = (pdfs) => {
+                pdfsContainer.innerHTML = '';
+                pdfs.forEach(pdf => {
+                    pdfsContainer.innerHTML += createPdfCard(pdf);
+                });
+                
+                // Add event listeners to PDF action buttons
+                document.querySelectorAll('.view-pdf-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const pdfName = btn.dataset.pdfName;
+                        viewPdf(pdfName);
+                    });
+                });
+
+                document.querySelectorAll('.edit-pdf-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const pdfName = btn.dataset.pdfName;
+                        showEditModal(pdfName);
+                    });
+                });
+                
+                // Re-initialize Lucide icons for new content
+                lucide.createIcons();
+            };
+
+            // View PDF function
+            const viewPdf = async (pdfName) => {
+                try {
+                    const response = await fetch(`/get_pdf_content/${pdfName}`);
+                    if (!response.ok) throw new Error('Failed to fetch PDF content');
+                    const data = await response.json();
+                    
+                    // For now, just show an alert with the content
+                    // In a real app, you might show this in a modal or new page
+                    alert(`PDF Content for "${pdfName}":\n\n${data.content.substring(0, 500)}...`);
+                } catch (err) {
+                    alert('Failed to load PDF content');
+                    console.error('Error loading PDF content:', err);
+                }
+            };
+
+            // Show edit modal
+            const showEditModal = async (pdfName) => {
+                currentPdf = pdfName;
+                editModalPdfName.textContent = pdfName;
+                editModal.classList.remove('hidden');
+                await loadPdfContent(pdfName);
+            };
+
+            // Hide edit modal
+            const hideEditModal = () => {
+                editModal.classList.add('hidden');
+                currentPdf = null;
+                currentPdfContent = null;
+                // Reset display states
+                pdfContentLoading.classList.remove('hidden');
+                pdfContentError.classList.add('hidden');
+                pdfContentDisplay.classList.add('hidden');
+                pdfContentDisplay.innerHTML = '';
+            };
+
+            // Load PDF content for editing
+            const loadPdfContent = async (pdfName) => {
+                pdfContentLoading.classList.remove('hidden');
+                pdfContentError.classList.add('hidden');
+                pdfContentDisplay.classList.add('hidden');
+
+                try {
+                    // Get PDF content
+                    const response = await fetch(`/get_pdf_content/${pdfName}`);
+                    if (!response.ok) throw new Error('Failed to fetch PDF content');
+                    const data = await response.json();
+                    currentPdfContent = data.content;
+
+                    // Display PDF content using the display_pdf endpoint
+                    await displayPdfContent(data.content);
+                } catch (err) {
+                    console.error('Error loading PDF content:', err);
+                    pdfContentLoading.classList.add('hidden');
+                    pdfContentError.classList.remove('hidden');
+                }
+            };
+
+            // Display PDF content using the display_pdf endpoint
+            const displayPdfContent = async (content) => {
+                try {
+                    const response = await fetch('/display_pdf', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ content: content })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to display PDF content');
+                    const data = await response.json();
+                    console.log('PDF content displayed successfully:', data);
+
+                    // Display the HTML content
+                    pdfContentDisplay.innerHTML = data.content;
+                    pdfContentLoading.classList.add('hidden');
+                    pdfContentError.classList.add('hidden');
+                    pdfContentDisplay.classList.remove('hidden');
+                } catch (err) {
+                    console.error('Error displaying PDF content:', err);
+                    pdfContentLoading.classList.add('hidden');
+                    pdfContentError.classList.remove('hidden');
+                }
+            };
+
+            // Preview PDF function
+            const previewPdf = () => {
+                if (currentPdfContent) {
+                    // Open content in new window for preview
+                    const newWindow = window.open('', '_blank');
+                    newWindow.document.write(`
+                        <html>
+                            <head>
+                                <title>PDF Preview - ${currentPdf}</title>
+                                <style>
+                                    body { font-family: Arial, sans-serif; margin: 20px; }
+                                    pre { white-space: pre-wrap; word-wrap: break-word; }
+                                </style>
+                            </head>
+                            <body>
+                                <h1>Preview: ${currentPdf}</h1>
+                                <hr>
+                                <pre>${currentPdfContent}</pre>
+                            </body>
+                        </html>
+                    `);
+                    newWindow.document.close();
+                }
+            };
+
+            // Update PDF function
+            const updatePdf = async () => {
+                if (!currentPdf || !currentPdfContent) return;
+
+                // Show loading state
+                updateBtnText.classList.add('hidden');
+                updateBtnLoading.classList.remove('hidden');
+                updatePdfBtn.disabled = true;
+
+                try {
+                    const response = await fetch(`/update_pdf/${currentPdf}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ content: currentPdfContent })
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to update PDF');
+                    
+                    alert(`PDF "${currentPdf}" updated successfully!`);
+                    hideEditModal();
+                } catch (err) {
+                    alert('Failed to update PDF');
+                    console.error('Error updating PDF:', err);
+                } finally {
+                    // Reset button state
+                    updateBtnText.classList.remove('hidden');
+                    updateBtnLoading.classList.add('hidden');
+                    updatePdfBtn.disabled = false;
+                }
+            };
+
+            // Delete PDF function from edit modal
+            const deletePdfFromModal = async () => {
+                if (!currentPdf) return;
+
+                if (!confirm(`Are you sure you want to delete "${currentPdf}"?`)) {
+                    return;
+                }
+
+                // Show loading state
+                deleteBtnText.classList.add('hidden');
+                deleteBtnLoading.classList.remove('hidden');
+                deletePdfBtn.disabled = true;
+
+                try {
+                    const response = await fetch(`/delete_pdf/${currentPdf}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to delete PDF');
+                    
+                    // Reload the PDFs after deletion
+                    loadPdfsForDisplay();
+                    alert(`PDF "${currentPdf}" deleted successfully!`);
+                    hideEditModal();
+                } catch (err) {
+                    alert('Failed to delete PDF');
+                    console.error('Error deleting PDF:', err);
+                } finally {
+                    // Reset button state
+                    deleteBtnText.classList.remove('hidden');
+                    deleteBtnLoading.classList.add('hidden');
+                    deletePdfBtn.disabled = false;
+                }
+            };
+
+            // Show create PDF modal
+            const showCreatePdfModal = () => {
+                createPdfModal.classList.remove('hidden');
+                pdfNameInput.value = '';
+                pdfContentInput.value = '';
+                pdfNameInput.focus();
+            };
+
+            // Hide create PDF modal
+            const hideCreatePdfModal = () => {
+                createPdfModal.classList.add('hidden');
+                pdfNameInput.value = '';
+                pdfContentInput.value = '';
+            };
+
+            // Create new PDF
+            const createNewPdf = async () => {
+                const name = pdfNameInput.value.trim();
+                if (!name) {
+                    alert('Please enter a PDF name');
+                    return;
+                }
+
+                // Show loading state
+                createBtnText.classList.add('hidden');
+                createBtnLoading.classList.remove('hidden');
+                createPdfSubmitBtn.disabled = true;
+
+                try {
+                    const response = await fetch('/create_pdf', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            url: name,
+                            content: pdfContentInput.value.trim()
+                        })
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to create PDF');
+                    
+                    alert(`PDF "${name}" created successfully!`);
+                    hideCreatePdfModal();
+                    
+                    // Reload PDFs if we're on the saved tab
+                    if (currentTab === 'saved') {
+                        loadPdfsForDisplay();
+                    }
+                } catch (err) {
+                    alert('Failed to create PDF. Please try again.');
+                    console.error('Error creating PDF:', err);
+                } finally {
+                    // Reset button state
+                    createBtnText.classList.remove('hidden');
+                    createBtnLoading.classList.add('hidden');
+                    createPdfSubmitBtn.disabled = false;
+                }
+            };
+
+            // Load PDFs into dropdown
+            const loadPdfs = async () => {
+                pdfSelectLoading.classList.remove('hidden');
+                pdfSelect.innerHTML = '<option value="">Loading PDFs...</option>';
+                
+                try {
+                    availablePdfs = await getPdfs();
+                    pdfSelect.innerHTML = '';
+                    
+                    if (availablePdfs.length === 0) {
+                        pdfSelect.innerHTML = '<option value="">No PDFs available</option>';
+                    } else {
+                        pdfSelect.innerHTML = '<option value="">Select a PDF...</option>';
+                        availablePdfs.forEach(pdf => {
+                            const option = document.createElement('option');
+                            option.value = pdf;
+                            option.textContent = pdf;
+                            pdfSelect.appendChild(option);
+                        });
+                    }
+                } catch (err) {
+                    pdfSelect.innerHTML = '<option value="">Error loading PDFs</option>';
+                } finally {
+                    pdfSelectLoading.classList.add('hidden');
+                }
+            };
+
+            // Show save modal
+            const showSaveModal = (article) => {
+                currentArticle = article;
+                modalArticleTitle.textContent = article.title;
+                saveModal.classList.remove('hidden');
+                loadPdfs();
+            };
+
+            // Hide save modal
+            const hideSaveModal = () => {
+                saveModal.classList.add('hidden');
+                currentArticle = null;
+                pdfSelect.value = '';
+            };
+
+            // Save article to PDF
+            const saveArticleToPdf = async () => {
+                const selectedPdf = pdfSelect.value;
+                if (!selectedPdf || !currentArticle) return;
+
+                // Show loading state
+                saveBtnText.classList.add('hidden');
+                saveBtnLoading.classList.remove('hidden');
+                saveArticleBtn.disabled = true;
+
+                try {
+                    // Prepare article data to be saved in the exact format required
+                    const articleData = [{
+                        title: currentArticle.title,
+                        description: currentArticle.description,
+                        link: currentArticle.link,
+                        pub_date: currentArticle.pub_date,
+                        media_url: currentArticle.media_url,
+                        platform: currentArticle.platform
+                    }];
+
+                    // Call the update_pdf endpoint to append the article
+                    const response = await fetch(`/update_pdf/${selectedPdf}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            content: articleData
+                        })
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to save article');
+                    
+                    // Show success message
+                    alert(`Article "${currentArticle.title}" saved to "${selectedPdf}" successfully!`);
+                    
+                    hideSaveModal();
+                } catch (err) {
+                    alert('Failed to save article. Please try again.');
+                    console.error('Error saving article:', err);
+                } finally {
+                    // Reset button state
+                    saveBtnText.classList.remove('hidden');
+                    saveBtnLoading.classList.add('hidden');
+                    saveArticleBtn.disabled = false;
+                }
+            };
+
+            // Fetch news from server
+            const getNews = async () => {
+                try {
+                    const response = await fetch('/get_news');
+                    if (!response.ok) throw new Error('Failed to fetch news');
+                    const data = await response.json();
+                    return Array.isArray(data) ? data : [data];
+                } catch (err) {
+                    // Fallback to mock data for demo
+                    console.warn('Using mock data:', err.message);
+                }
+            };
+
+            // Create news card HTML
+            const createNewsCard = (article, index) => {
+                return `
+                    <div class="block group focus:outline-none focus:ring-2 focus:ring-neutral-600 rounded-xl fade-in">
+                        <div class="h-full border border-neutral-800 rounded-xl overflow-hidden bg-neutral-950 hover:border-neutral-700 transition-all duration-300">
+                            <a href="${article.link}" target="_blank" rel="noopener noreferrer">
+                                <img class="h-48 w-full object-cover object-center group-hover:scale-105 transition-transform duration-300" 
+                                     src="${article.media_url}" 
+                                     alt="${article.title}"
+                                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjE5MiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMTcxNzE3Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzczNzM3MyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk5vIEltYWdlPC90ZXh0Pjwvc3ZnPg=='">
+                            </a>
+                            <div class="p-6 flex flex-col justify-between h-[calc(100%-12rem)]">
+                                <div>
+                                    <h3 class="text-xs font-medium tracking-widest text-neutral-400 mb-1 uppercase">${article.platform}</h3>
+                                    <a href="${article.link}" target="_blank" rel="noopener noreferrer">
+                                        <h2 class="text-lg font-semibold text-white mb-3 leading-tight hover:text-neutral-200 transition-colors">${article.title}</h2>
+                                    </a>
+                                    <p class="text-neutral-400 leading-relaxed mb-3 text-sm">${article.description}</p>
+                                </div>
+                                <div class="flex items-center justify-between mt-auto pt-4">
+                                    <span class="text-neutral-500 text-xs font-medium">${article.pub_date}</span>
+                                    <div class="flex items-center gap-3">
+                                        <button class="save-article-btn p-1 text-neutral-500 hover:text-white transition-colors" 
+                                                data-article-index="${index}" 
+                                                title="Save to PDF">
+                                            <i data-lucide="bookmark-plus" class="w-4 h-4"></i>
+                                        </button>
+                                        <a href="${article.link}" target="_blank" rel="noopener noreferrer" class="text-neutral-500 hover:text-neutral-300 transition-colors">
+                                            <i data-lucide="external-link" class="w-4 h-4"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            };
+
+            // State management functions
+            function showLoading() {
+                loading.classList.remove('hidden');
+                error.classList.add('hidden');
+                newsFeedContainer.classList.add('hidden');
+            }
+
+            function showError() {
+                loading.classList.add('hidden');
+                error.classList.remove('hidden');
+                newsFeedContainer.classList.add('hidden');
+            }
+
+            function showNews() {
+                loading.classList.add('hidden');
+                error.classList.add('hidden');
+                newsFeedContainer.classList.remove('hidden');
+            }
+
+            // Render news articles
+            let newsArticles = [];
+            const renderNews = (articles) => {
+                newsArticles = articles;
+                newsFeedContainer.innerHTML = '';
+                articles.forEach((article, index) => {
+                    newsFeedContainer.innerHTML += createNewsCard(article, index);
+                });
+                
+                // Add event listeners to save buttons
+                document.querySelectorAll('.save-article-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const articleIndex = parseInt(btn.dataset.articleIndex);
+                        const article = newsArticles[articleIndex];
+                        showSaveModal(article);
+                    });
+                });
+                
+                // Re-initialize Lucide icons for new content
+                lucide.createIcons();
+            };
+
+            // Load news data
+            const loadNews = async () => {
+                showLoading();
+                try {
+                    const articles = await getNews();
+                    renderNews(articles);
+                    showNews();
+                } catch (err) {
+                    console.error('Error loading news:', err);
+                    showError();
+                }
+            };
+
+            // Event listeners
+            newsTab.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchTab('news');
+            });
+
+            savedTab.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchTab('saved');
+            });
+
+            refreshBtn.addEventListener('click', loadNews);
+            retryBtn.addEventListener('click', loadNews);
+
+            // PDF section event listeners
+            refreshPdfsBtn.addEventListener('click', loadPdfsForDisplay);
+            retryPdfsBtn.addEventListener('click', loadPdfsForDisplay);
+            createPdfBtn.addEventListener('click', showCreatePdfModal);
+
+            // Modal event listeners
+            closeModal.addEventListener('click', hideSaveModal);
+            cancelSave.addEventListener('click', hideSaveModal);
+            saveArticleBtn.addEventListener('click', saveArticleToPdf);
+
+            // Edit modal event listeners
+            closeEditModal.addEventListener('click', hideEditModal);
+            cancelEdit.addEventListener('click', hideEditModal);
+            previewPdfBtn.addEventListener('click', previewPdf);
+            updatePdfBtn.addEventListener('click', updatePdf);
+            deletePdfBtn.addEventListener('click', deletePdfFromModal);
+
+            // Create PDF modal event listeners
+            closeCreateModal.addEventListener('click', hideCreatePdfModal);
+            cancelCreate.addEventListener('click', hideCreatePdfModal);
+            createPdfSubmitBtn.addEventListener('click', createNewPdf);
+
+            // Close modals when clicking outside
+            saveModal.addEventListener('click', (e) => {
+                if (e.target === saveModal) {
+                    hideSaveModal();
+                }
+            });
+
+            editModal.addEventListener('click', (e) => {
+                if (e.target === editModal) {
+                    hideEditModal();
+                }
+            });
+
+            createPdfModal.addEventListener('click', (e) => {
+                if (e.target === createPdfModal) {
+                    hideCreatePdfModal();
+                }
+            });
+
+            // Close modals with Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (!saveModal.classList.contains('hidden')) {
+                        hideSaveModal();
+                    } else if (!editModal.classList.contains('hidden')) {
+                        hideEditModal();
+                    } else if (!createPdfModal.classList.contains('hidden')) {
+                        hideCreatePdfModal();
+                    }
+                }
+            });
+
+            // Handle Enter key in create PDF modal
+            pdfNameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    createNewPdf();
+                }
+            });
+
+            pdfContentInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    e.preventDefault();
+                    createNewPdf();
+                }
+            });
+
+            // Initialize the app
+            switchTab('news');
+            loadNews();
+
+            // Initialize Lucide icons
+            lucide.createIcons();
+        });
+    </script>
+
+</body>
+</html>

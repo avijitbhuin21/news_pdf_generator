@@ -1,0 +1,5 @@
+venv/
+trial.py
+trial.ipynb
+__pycache__/
+*.pyc

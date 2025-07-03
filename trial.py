@@ -182,9 +182,10 @@ html = """
 </body>
 </html>
 """
-import os
 options = {
-    'page-size': 'A4',
+    'page-size': 'A5',  # Smaller page size (A5 is half the size of A4)
+    'page-width': '140mm',  # Custom width (optional, overrides page-size width)
+    'page-height': '180mm',  # Custom height (optional, overrides page-size height)
     'margin-top': '0',
     'margin-right': '0',
     'margin-bottom': '0',
@@ -194,6 +195,4 @@ options = {
     'no-outline': None
 }
 
-path = os.path.abspath(r"d:\Normal_apps\wkhtmltopdf\bin\wkhtmltopdf.exe")
-config = pdfkit.configuration(wkhtmltopdf=path)
-pdfkit.from_string(html, 'output.pdf', configuration=config, options=options)
+pdfkit.from_string(html, 'output.pdf', options=options)

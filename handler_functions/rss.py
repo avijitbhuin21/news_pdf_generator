@@ -3,7 +3,8 @@ import re
 import html
 import asyncio
 import random
-
+import nest_asyncio
+nest_asyncio.apply()  # Apply nest_asyncio to allow nested event loops
 
 async def get_bbc_news_async():
     async with aiohttp.ClientSession() as session:
@@ -79,7 +80,7 @@ async def get_ndtv_news_async():
 
 
 
-async def get_trending_news():
+async def get_trending_news_async():
     tasks = [
         get_bbc_news_async(),
         get_nyt_news_async(),
@@ -87,7 +88,14 @@ async def get_trending_news():
         get_ndtv_news_async()
     ]
     random.shuffle(tasks)
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    results = await asyncio.gather(*tasks)
     results = [item for sublist in results for item in sublist if isinstance(sublist, list)]
-    return results 
+    return results
+
+def get_trending_news():
+    try:
+        # loop = asyncio.get_running_loop()
+        return asyncio.run(get_trending_news_async())
+    except RuntimeError:
+        return asyncio.run(get_trending_news_async())
 

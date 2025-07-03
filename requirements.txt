@@ -1,0 +1,6 @@
+pdfkit
+requests
+beautifulsoup4
+aiohttp
+flask
+PyPDF2
